@@ -16,6 +16,9 @@ def load_media(path, key):
         return frame, alpha
 
     img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise FileNotFoundError(f"Media not found: {path}")
+
     if img.shape[2] == 4:
         return img[:,:,:3], img[:,:,3]
     else:
@@ -24,6 +27,10 @@ def load_media(path, key):
 
 
 def draw_plane(frame_u, media_frame, alpha, obj_pts, rvec, tvec, K, dist):
+    # ⚠️ UMat 尺寸稳定获取方式
+    frame_cpu = frame_u.get()
+    H, W = frame_cpu.shape[:2]
+
     h, w = media_frame.shape[:2]
 
     img_pts, _ = cv2.projectPoints(obj_pts, rvec, tvec, K, dist)
@@ -32,14 +39,17 @@ def draw_plane(frame_u, media_frame, alpha, obj_pts, rvec, tvec, K, dist):
     src_pts = np.float32([[0,0],[w,0],[w,h],[0,h]])
     M = cv2.getPerspectiveTransform(src_pts, img_pts)
 
-    warped = cv2.warpPerspective(cv2.UMat(media_frame), M, (frame_u.cols, frame_u.rows))
-    warped_alpha = cv2.warpPerspective(cv2.UMat(alpha), M, (frame_u.cols, frame_u.rows))
+    warped = cv2.warpPerspective(cv2.UMat(media_frame), M, (W, H))
+    warped_alpha = cv2.warpPerspective(cv2.UMat(alpha), M, (W, H))
 
-    warped_alpha = cv2.merge([warped_alpha, warped_alpha, warped_alpha])
-    warped_alpha = cv2.UMat(warped_alpha.get().astype(np.float32) / 255.0)
-
-    frame_f = cv2.UMat(frame_u.get().astype(np.float32))
+    # 转 float 做混合
     warped_f = cv2.UMat(warped.get().astype(np.float32))
+    frame_f  = cv2.UMat(frame_cpu.astype(np.float32))
 
-    out = cv2.multiply(warped_f, warped_alpha) + cv2.multiply(frame_f, 1 - warped_alpha)
+    alpha_f = warped_alpha.get().astype(np.float32) / 255.0
+    alpha_f = cv2.merge([alpha_f, alpha_f, alpha_f])
+    alpha_f = cv2.UMat(alpha_f)
+
+    out = cv2.multiply(warped_f, alpha_f) + cv2.multiply(frame_f, 1 - alpha_f)
+
     return cv2.UMat(out.get().astype(np.uint8))
