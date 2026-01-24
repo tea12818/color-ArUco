@@ -1,7 +1,6 @@
 import numpy as np
 from .base_overlay import load_media, draw_plane
 
-video_caps = {}
 
 MARKER_ID = 2
 MEDIA_PATH = "script/image/2.mp4"
