@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 
-def load_media(path, video_caps, key):
+video_caps = {}
+
+def load_media(path, key):
     if path.lower().endswith((".mp4",".avi",".mov",".mkv")):
         if key not in video_caps:
             video_caps[key] = cv2.VideoCapture(path)
@@ -21,16 +23,23 @@ def load_media(path, video_caps, key):
         return img, alpha
 
 
-def draw_plane(frame, media_frame, alpha, obj_pts, rvec, tvec, K, dist):
+def draw_plane(frame_u, media_frame, alpha, obj_pts, rvec, tvec, K, dist):
     h, w = media_frame.shape[:2]
+
     img_pts, _ = cv2.projectPoints(obj_pts, rvec, tvec, K, dist)
     img_pts = img_pts.reshape(-1,2).astype(np.float32)
 
     src_pts = np.float32([[0,0],[w,0],[w,h],[0,h]])
     M = cv2.getPerspectiveTransform(src_pts, img_pts)
 
-    warped = cv2.warpPerspective(media_frame, M, (frame.shape[1], frame.shape[0]))
-    warped_alpha = cv2.warpPerspective(alpha, M, (frame.shape[1], frame.shape[0]))
+    warped = cv2.warpPerspective(cv2.UMat(media_frame), M, (frame_u.cols, frame_u.rows))
+    warped_alpha = cv2.warpPerspective(cv2.UMat(alpha), M, (frame_u.cols, frame_u.rows))
 
-    warped_alpha = np.dstack([warped_alpha/255.0]*3)
-    return (warped*warped_alpha + frame*(1-warped_alpha)).astype(np.uint8)
+    warped_alpha = cv2.merge([warped_alpha, warped_alpha, warped_alpha])
+    warped_alpha = cv2.UMat(warped_alpha.get().astype(np.float32) / 255.0)
+
+    frame_f = cv2.UMat(frame_u.get().astype(np.float32))
+    warped_f = cv2.UMat(warped.get().astype(np.float32))
+
+    out = cv2.multiply(warped_f, warped_alpha) + cv2.multiply(frame_f, 1 - warped_alpha)
+    return cv2.UMat(out.get().astype(np.uint8))
