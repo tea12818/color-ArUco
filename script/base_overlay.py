@@ -42,14 +42,20 @@ def draw_plane(frame_u, media_frame, alpha, obj_pts, rvec, tvec, K, dist):
     warped = cv2.warpPerspective(cv2.UMat(media_frame), M, (W, H))
     warped_alpha = cv2.warpPerspective(cv2.UMat(alpha), M, (W, H))
 
-    # 转 float 做混合
+    # 转 float
     warped_f = cv2.UMat(warped.get().astype(np.float32))
     frame_f  = cv2.UMat(frame_cpu.astype(np.float32))
 
-    alpha_f = warped_alpha.get().astype(np.float32) / 255.0
-    alpha_f = cv2.merge([alpha_f, alpha_f, alpha_f])
-    alpha_f = cv2.UMat(alpha_f)
+    alpha_cpu = warped_alpha.get().astype(np.float32) / 255.0
+    alpha_3 = cv2.merge([alpha_cpu, alpha_cpu, alpha_cpu])
+    alpha_f = cv2.UMat(alpha_3)
 
-    out = cv2.multiply(warped_f, alpha_f) + cv2.multiply(frame_f, 1 - alpha_f)
+    one = cv2.UMat(np.ones_like(alpha_3, dtype=np.float32))
+
+    part1 = cv2.multiply(warped_f, alpha_f)
+    part2 = cv2.multiply(frame_f, cv2.subtract(one, alpha_f))
+
+    out = cv2.add(part1, part2)
 
     return cv2.UMat(out.get().astype(np.uint8))
+
