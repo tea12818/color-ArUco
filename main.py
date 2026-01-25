@@ -55,8 +55,10 @@ while True:
             rvec, tvec = rvecs[i], tvecs[i]
 
             if show_debug:
-                aruco.drawDetectedMarkers(frame_cpu, corners, ids)
-                cv2.drawFrameAxes(frame_cpu, camera_matrix, dist_coeffs, rvec, tvec, 0.03)
+                cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+                for i in range(len(ids)):
+                    cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvecs[i], tvecs[i], marker_length*0.5)
+
 
             if marker_id in script_modules:
                 frame = script_modules[marker_id].render(
@@ -66,11 +68,11 @@ while True:
     cv2.imshow("AR System (OpenCL)", frame.get())
 
     key = cv2.waitKey(1) & 0xFF
-    if key == 27:
-        break
-    elif key == ord('\\'):
+
+    # 按 \ 键切换调试显示
+    if key == ord('\\'):
         show_debug = not show_debug
-        print("Debug:", show_debug)
+
 
 cap.release()
 cv2.destroyAllWindows()
