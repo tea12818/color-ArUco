@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import glob
 import time
-
+import os
 video_caps = {}
 image_sequences = {}
 sequence_states = {}

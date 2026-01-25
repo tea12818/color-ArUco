@@ -5,9 +5,9 @@ MARKER_ID = 2
 
 ANIM = {
     "folder": "script/image/anim_2",
-    "fps": 30,
+    "fps": 60,
     "speed": 1.0,
-    "pause_after": 2.0,
+    "pause_after": 10.0,
     "pause_duration": 1.0
 }
 
