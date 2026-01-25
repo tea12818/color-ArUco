@@ -1,11 +1,18 @@
 import numpy as np
-from .base_overlay import load_media, draw_plane
+from .base_overlay import load_sequence, draw_plane
 
 MARKER_ID = 2
-MEDIA_PATH = "script/image/2.mp4"
+
+ANIM = {
+    "folder": "script/image/anim_2",
+    "fps": 30,
+    "speed": 1.0,
+    "pause_after": 2.0,
+    "pause_duration": 1.0
+}
 
 def render(frame, rvec, tvec, K, dist):
-    media_frame, alpha = load_media(MEDIA_PATH, MARKER_ID)
+    media_frame, alpha = load_sequence(ANIM["folder"], MARKER_ID, ANIM)
 
     obj_pts = np.float32([
         [-0.05, 0.10, 0.02],

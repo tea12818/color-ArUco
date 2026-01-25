@@ -1,7 +1,48 @@
 import cv2
 import numpy as np
+import glob
+import time
 
 video_caps = {}
+image_sequences = {}
+sequence_states = {}
+
+
+
+def load_sequence(folder, key, playback):
+    if key not in image_sequences:
+        files = sorted(glob.glob(os.path.join(folder, "*.png")))
+        image_sequences[key] = files
+
+    if key not in sequence_states:
+        sequence_states[key] = {"start_time": time.time()}
+
+    files = image_sequences[key]
+    state = sequence_states[key]
+
+    fps = playback.get("fps", 30)
+    speed = playback.get("speed", 1.0)
+    pause_after = playback.get("pause_after", None)
+    pause_duration = playback.get("pause_duration", 0)
+
+    elapsed = (time.time() - state["start_time"]) * speed
+    frame_index = int(elapsed * fps)
+
+    if pause_after and elapsed >= pause_after:
+        time.sleep(pause_duration)
+        state["start_time"] = time.time()
+        frame_index = 0
+
+    frame_index = frame_index % len(files)
+
+    img = cv2.imread(files[frame_index], cv2.IMREAD_UNCHANGED)
+
+    if img.shape[2] == 4:
+        return img[:,:,:3], img[:,:,3]
+    else:
+        alpha = np.ones(img.shape[:2], dtype=np.uint8)*255
+        return img, alpha
+
 
 def load_media(path, key):
     if path.lower().endswith((".mp4",".avi",".mov",".mkv")):
