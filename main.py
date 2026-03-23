@@ -47,9 +47,27 @@ while True:
     corners, ids, _ = detector.detectMarkers(frame_cpu)
 
     if ids is not None:
-        rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
-            corners, marker_length, camera_matrix, dist_coeffs
-        )
+        # 直接使用 solvePnP 兼容所有版本
+        obj_pts = np.array([
+            [-marker_length/2,  marker_length/2, 0],
+            [ marker_length/2,  marker_length/2, 0],
+            [ marker_length/2, -marker_length/2, 0],
+            [-marker_length/2, -marker_length/2, 0],
+        ], dtype=np.float32)
+
+        rvecs = []
+        tvecs = []
+        for c in corners:
+            img_pts = c.reshape(-1, 1, 2).astype(np.float32)
+            success, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+            if not success:
+                rvec = np.zeros((3,1), dtype=np.float32)
+                tvec = np.zeros((3,1), dtype=np.float32)
+            rvecs.append(rvec)
+            tvecs.append(tvec)
+
+        rvecs = np.array(rvecs, dtype=np.float32)
+        tvecs = np.array(tvecs, dtype=np.float32)
 
         for i, marker_id in enumerate(ids.flatten()):
             rvec, tvec = rvecs[i], tvecs[i]
