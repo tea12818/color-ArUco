@@ -38,10 +38,24 @@ def load_sequence(folder, key, playback):
     img = cv2.imread(files[frame_index], cv2.IMREAD_UNCHANGED)
 
     if img.shape[2] == 4:
-        return img[:,:,:3], img[:,:,3]
+        media = img[:,:,:3]
+        alpha = img[:,:,3]
     else:
+        media = img
         alpha = np.ones(img.shape[:2], dtype=np.uint8)*255
-        return img, alpha
+
+    # Load normal map from normal_map folder
+    normal_path = os.path.join("script/image/normal_map", f"{key}.png")
+    normal_map = None
+    if os.path.exists(normal_path):
+        normal_img = cv2.imread(normal_path, cv2.IMREAD_UNCHANGED)
+        if normal_img is not None:
+            if normal_img.shape[2] == 4:
+                normal_map = normal_img[:,:,:3]
+            else:
+                normal_map = normal_img
+
+    return media, alpha, normal_map
 
 
 def load_media(path, key):
@@ -54,20 +68,34 @@ def load_media(path, key):
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             ret, frame = cap.read()
         alpha = np.ones(frame.shape[:2], dtype=np.uint8)*255
-        return frame, alpha
+        return frame, alpha, None
 
     img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(f"Media not found: {path}")
 
     if img.shape[2] == 4:
-        return img[:,:,:3], img[:,:,3]
+        media = img[:,:,:3]
+        alpha = img[:,:,3]
     else:
+        media = img
         alpha = np.ones(img.shape[:2], dtype=np.uint8)*255
-        return img, alpha
+
+    # Load normal map from normal_map folder
+    normal_path = os.path.join("script/image/normal_map", f"{key}.png")
+    normal_map = None
+    if os.path.exists(normal_path):
+        normal_img = cv2.imread(normal_path, cv2.IMREAD_UNCHANGED)
+        if normal_img is not None:
+            if normal_img.shape[2] == 4:
+                normal_map = normal_img[:,:,:3]
+            else:
+                normal_map = normal_img
+
+    return media, alpha, normal_map
 
 
-def draw_plane(frame_u, media_frame, alpha, obj_pts, rvec, tvec, K, dist):
+def draw_plane(frame_u, media_frame, alpha, obj_pts, rvec, tvec, K, dist, normal_map=None):
     # ⚠️ UMat 尺寸稳定获取方式
     frame_cpu = frame_u.get()
     H, W = frame_cpu.shape[:2]
@@ -82,6 +110,24 @@ def draw_plane(frame_u, media_frame, alpha, obj_pts, rvec, tvec, K, dist):
 
     warped = cv2.warpPerspective(cv2.UMat(media_frame), M, (W, H))
     warped_alpha = cv2.warpPerspective(cv2.UMat(alpha), M, (W, H))
+
+    # Apply normal mapping if normal_map is provided
+    if normal_map is not None:
+        warped_normal = cv2.warpPerspective(cv2.UMat(normal_map), M, (W, H))
+        warped_normal_cpu = warped_normal.get().astype(np.float32) / 255.0 * 2.0 - 1.0  # Decode normals
+
+        # Light direction (assuming from above)
+        light_dir = np.array([0.0, 0.0, 1.0])
+
+        # Compute diffuse lighting
+        normals = warped_normal_cpu
+        diffuse = np.maximum(0, normals[:, :, 0] * light_dir[0] + normals[:, :, 1] * light_dir[1] + normals[:, :, 2] * light_dir[2])
+        diffuse = np.clip(diffuse, 0, 1)
+
+        # Apply lighting to warped image
+        warped_cpu = warped.get().astype(np.float32)
+        warped_cpu = warped_cpu * diffuse[:, :, np.newaxis]
+        warped = cv2.UMat(warped_cpu.astype(np.uint8))
 
     # 转 float
     warped_f = cv2.UMat(warped.get().astype(np.float32))

@@ -12,7 +12,7 @@ ANIM = {
 }
 
 def render(frame, rvec, tvec, K, dist):
-    media_frame, alpha = load_sequence(ANIM["folder"], MARKER_ID, ANIM)
+    media_frame, alpha, normal_map = load_sequence(ANIM["folder"], MARKER_ID, ANIM)
 
     obj_pts = np.float32([
         [-0.05, 0.10, 0.02],
@@ -21,4 +21,4 @@ def render(frame, rvec, tvec, K, dist):
         [-0.05, 0.02, 0.02],
     ])
 
-    return draw_plane(frame, media_frame, alpha, obj_pts, rvec, tvec, K, dist)
+    return draw_plane(frame, media_frame, alpha, obj_pts, rvec, tvec, K, dist, normal_map)
